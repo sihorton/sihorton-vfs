@@ -257,10 +257,20 @@ var appfs = function(mountpath, stats, readyCall) {
 			return false;
 		},chown(fpath,uid,gid,chownDone) {
 			if (Me.dirs[fpath]) {
-				
+				Me.dirs[fpath].uid = uid;
+				Me.dirs[fpath].gid = gid;
+				if (chownDone) chownDone();
+			} else {
+				var err = new Error("ENOENT, chown '"+fpath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = fpath;
+				renameDone(err);
 			}
+		},chownSync:function(fpath,uid,gid,chownDone) {
+			//we can support sync call since we complete immediately
+			return Me.chown(fpath,uid,gid,chownDone);
 		}
-		
 	}
 	if (stats.size ==0) {
 		//this is a new file.
