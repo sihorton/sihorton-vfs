@@ -50,7 +50,7 @@ appfs.Mount(__dirname+"\\new-example.appfs",function(vfs) {
 		//write1.end();
 	});
 });
-appfs.Mount(__dirname+"\\write-example.appfs",function(vfs) {
+appfs.Mount(__dirname+"\\write-example2.appfs",function(vfs) {
 	var write1 = vfs.createWriteStream("test.txt");
 	write1.on('close',function() {
 		console.log("wrote data");

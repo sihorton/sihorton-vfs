@@ -15,14 +15,14 @@ var appfs = function(mountpath, stats, readyCall) {
 		
 		// footer info
 		,footerOnDisk:false
-		,footerModified:false
+		,footerModified:true
 		,formatName:'a'
 		,formatSize:16
 		,footerSize:(4*3)+16
-		,dirPos:undefined
+		,dirPos:0
 		,fileFormatv:0
 		,flagv:0
-		,dirs:undefined
+		,dirs:{}
 		// footer info end
 		
 		/**
@@ -64,8 +64,8 @@ var appfs = function(mountpath, stats, readyCall) {
 		*/
 		,_writeFooter:function(footerWritten) {
 			//just to be safe re-stat to find size.
-			//fs.stat(Me.mountpath,function(err,stats) {
-			//Me.dirPos = stats.size;
+			fs.stat(Me.mountpath,function(err,stats) {
+			Me.dirPos = stats.size;
 				var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
 				footer1.write(JSON.stringify(Me.dirs));
 				
@@ -98,7 +98,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				if (typeof footerWritten != 'undefined') {
 					footerWritten();
 				}
-			//});
+			});
 		}
 		/* virtual file system, replicate fs style api */
 		,stat:function(path, statCalling) {
@@ -152,7 +152,12 @@ var appfs = function(mountpath, stats, readyCall) {
 			//options not supported yet..
 			//you can only open them one at a time..
 			//we should start writing from the dirposition..
-			var start = Me.dirPos;//Me.msize;
+			Me.footerOnDisk=false;
+			Me.footerModified=true;
+			//console.log("writing a stream");
+			//console.log("msize=",Me.msize,",dirPos=",Me.dirPos);
+			//var start = Me.msize;
+			//var start = Me.dirPos;//Me.msize;
 			//can append if no footer written, overwrite if it does not yet exist.
 			var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
 			//var write1 = fs.createWriteStream(Me.mountpath,{flags:'r+',start:start});
@@ -162,6 +167,10 @@ var appfs = function(mountpath, stats, readyCall) {
 				//and one where it has, so we will basically write over it
 				//question is also if we want to auto add and write the dirs
 				//after each file write...
+				
+				//also we break the ability to simply append new files to the stream,
+				//maybe we need to have a flush function that creates a new file without the dirlisting
+				
 				Me.dirs[fpath] = {
 					start:Me.msize//Me.dirpos
 					,name:path.basename(fpath)
@@ -180,7 +189,12 @@ var appfs = function(mountpath, stats, readyCall) {
 			return write1;
 		}
 	}
-	Me._readFooter(readyCall);
+	if (stats.size ==0) {
+		//this is a new file.
+		readyCall(Me);
+	} else {
+		Me._readFooter(readyCall);
+	}
 }
 /**
 * Wrapper for a real directory on disk.
@@ -198,24 +212,41 @@ var dirfs = function(mountpoint) {
 */
 module.exports.Mount = function(mountpath, readyCall) {
 	fs.stat(mountpath,function(err,stats) {
-		if (err) console.log(err);
-		if (stats.isDirectory()) {
-			//passed a real directory on disk, return wrapper.
-			var actual = dirfs(mountpath);
-			if (readyCall) {
-				readyCall(null, actual);
-			}
-		}
-		if (stats.isFile()) {
-			//find format from extension?
+		if (err && err.code == 'ENOENT') {
+			//path does not exist...
 			switch(path.extname(mountpath)) {
 				case '.appfs':
-					//an application resource package.
-					var virtual = new appfs(mountpath, stats,readyCall);
+					//create a new appfs.
+					var write1 = fs.createWriteStream(mountpath,{flags:'w'});
+					write1.end();
+					write1.on('close',function() {
+						var virtual = new appfs(mountpath,{size:0},readyCall);
+					});
 				break;
 				default:
 					throw "unknown format:"+mountpath;
 				break;
+			}
+		} else {
+			if (err) console.log(err);
+			if (stats.isDirectory()) {
+				//passed a real directory on disk, return wrapper.
+				var actual = dirfs(mountpath);
+				if (readyCall) {
+					readyCall(null, actual);
+				}
+			}
+			if (stats.isFile()) {
+				//find format from extension?
+				switch(path.extname(mountpath)) {
+					case '.appfs':
+						//an application resource package.
+						var virtual = new appfs(mountpath, stats,readyCall);
+					break;
+					default:
+						throw "unknown format:"+mountpath;
+					break;
+				}
 			}
 		}
 	});
