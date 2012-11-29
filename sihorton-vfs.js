@@ -23,6 +23,7 @@ var appfs = function(mountpath, stats, readyCall) {
 		,fileFormatv:0
 		,flagv:0
 		,dirs:{}
+		,fds:[]
 		// footer info end
 		
 		/**
@@ -252,6 +253,18 @@ var appfs = function(mountpath, stats, readyCall) {
 		},renameSync:function(oldPath, newPath, renameDone) {
 			//we can support sync call since we complete immediately
 			return Me.rename(oldPath,newPath,renameDone);
+		},truncate:function(fd, len, done) {
+			var fpath;
+			if (typeof fd == 'string') {
+				fpath = fd;
+			} else {
+				fpath = Me.fds[fd].path;
+			}
+			//uncontrolled altering of file size allowed here.
+			Me.dirs[fpath].size = len;
+			if (done) done();
+		},truncateSync:function(fd, len, done) {
+			return Me.truncateSync:function(fd, len, done);
 		},exists:function(fpath,existsDone) {
 			if (Me.dirs[fpath]) {
 				if (existsDone) existsDone(true);
