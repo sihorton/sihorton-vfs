@@ -102,18 +102,7 @@ var appfs = function(mountpath, stats, readyCall) {
 			});
 		}
 		/* virtual file system, replicate fs style api */
-		,stat:function(fpath, statCalling) {
-			if (Me.dirs[fpath]) {
-				statCalling(null,Me.dirs[fpath]);
-			} else {
-				//simulate read error
-				var err = new Error("ENOENT, stat '"+fpath+"'");
-				err.errno = 34;
-				err.code = 'ENOENT';
-				err.path = fpath;
-				statCalling(err);
-			}
-		},createReadStream:function(fpath,options) {
+		,createReadStream:function(fpath,options) {
 			/**
 			* http://nodejs.org/api/fs.html#fs_fs_createreadstream_path_options
 			* @ToDo support options.
@@ -229,6 +218,40 @@ var appfs = function(mountpath, stats, readyCall) {
 					Me.dirPos = fileStartPos+write1.bytesWritten;
 				});
 				return write1;
+			}
+		},stat:function(fpath, statCalling) {
+			if (Me.dirs[fpath]) {
+				var stats = {
+					isFile:function() {
+						//@ToDo
+						return undefined;
+					},isDirectory:function() {
+						//@ToDo
+						return undefined;
+					},isSymbolicLink:function() {
+						if (this.link) {
+							return true;
+						} else {
+							return false;
+						}
+					},isSocket() {return false;}
+					,isFIFO() {return false;}
+					,mode:Me.dirs[fpath].mode
+					,uid:Me.dirs[fpath].uid
+					,gid:Me.dirs[fpath].gid
+					,size:Me.dirs[fpath].size
+					,atime:Me.dirs[fpath].atime
+					,mtime:Me.dirs[fpath].mtime
+					,ctime:Me.dirs[fpath].ctime
+				}
+				statCalling(null,stats);
+			} else {
+				//simulate read error
+				var err = new Error("ENOENT, stat '"+fpath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = fpath;
+				statCalling(err);
 			}
 		},rename:function(oldPath, newPath, renameDone) {
 			if (!Me.dirs[oldPath]) {
