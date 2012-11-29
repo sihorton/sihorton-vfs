@@ -439,11 +439,6 @@ var appfs = function(mountpath, stats, readyCall) {
 		}
 		//,rmdir,rmdirSync,mkdir,mkdirSync
 		//readdir,readdirSync
-		/*,close(fd) {
-			//
-		},open(fpath,flags,mode,done) {
-		
-		}*/
 		,utimes(fpath,atime,mtime,done) {
 			if (Me.dirs[fpath]) {
 				Me.dirs[fpath].atime = atime;
@@ -458,6 +453,48 @@ var appfs = function(mountpath, stats, readyCall) {
 		},futimesSync(fd,atime,mtime) {
 			var fpath = Me.fds[fd];
 			utimes(fpath,atime,mtime);
+		},fsync(fd,done) {
+			//-- flush to disk
+			if (done) done(null);
+		},fsyncSync(fd) {
+		}
+		/*,close(fd) {
+			//
+		},open(fpath,flags,mode,done) {
+		
+		}
+		fs.write(fd, buffer, offset, length, position, [callback])#
+		fs.writeSync(fd, buffer, offset, length, position)
+		fs.read(fd, buffer, offset, length, position, [callback])
+		fs.readSync(fd, buffer, offset, length, position)
+		
+		*/
+		,readFile(fpath, encoding, done) {
+			var read1 = Me.createReadStream(fpath);
+			var dat;
+			read1.on('data',function(data) {
+				if (typeof dat == 'undefined') {
+					dat = data
+				} else {
+					dat += data;
+				}
+			});
+			read1.on('end',function() {
+				if (done) {
+					done(null, dat);
+				}
+			});
+		}
+		//,readFileSync(filename, encoding)
+		,writeFile(fpath, data, encoding, done) {
+			var write1 = Me.createWriteStream(fpath);
+			write1.on('close',function() {
+				if (done) done(null);
+			});
+			write1.write(data);
+			write1.end();
+		}
+		//writeFileSync(filename,data,encoding)
 		
 	}
 	if (stats.size ==0) {
