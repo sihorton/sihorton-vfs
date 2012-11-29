@@ -4,7 +4,7 @@ var fs = require('fs')
 /**
 * A virtual file system served from a file on disk.
 */
-var vfs = function(mountpath, stats, readyCall) {
+var appfs = function(mountpath, stats, readyCall) {
 	var Me = {
 		mountpath:mountpath
 		,msize:stats.size
@@ -15,6 +15,11 @@ var vfs = function(mountpath, stats, readyCall) {
 		,flagv:0
 		,dirs:undefined
 		/* footer info end*/
+		
+		/**
+		*_readFooter reads in the footer information and the directory listing
+		* no need to call this directly, it is done when the file is mounted.
+		*/
 		,_readFooter:function(footerRead) {
 			var readStream = fs.createReadStream(Me.mountpath,{start:Me.msize-Me.footerSize});
 			readStream.on('data', function(buff) {
@@ -34,18 +39,16 @@ var vfs = function(mountpath, stats, readyCall) {
 					dat+=data;
 				});
 				readDir.on('end',function() {
-					//we have now read in the buffer.
+					//we have now read in the directory listing.
 					Me.dirs = JSON.parse(dat);
-					if (readyCall) readyCall(Me);
+					//tell caller we are ready.
+					if (footerRead) footerRead(Me);
 			
 				});
 			});
 		}
 	}
-	Me._readFooter(function() {
-	
-	});
-	//return Me;
+	Me._readFooter(readyCall);
 }
 /**
 * Wrapper for a real directory on disk.
@@ -59,7 +62,7 @@ var dirfs = function(mountpoint) {
 /**
 * mount a file system from a particular path
 * if directory provide an fs wrapper, if file open
-* and provide vfs object.
+* and provide appfs object.
 */
 module.exports.Mount = function(mountpath, readyCall) {
 	fs.stat(mountpath,function(err,stats) {
@@ -76,9 +79,7 @@ module.exports.Mount = function(mountpath, readyCall) {
 			switch(path.extname(mountpath)) {
 				case '.appfs':
 					//an application resource package.
-					var virtual = new vfs(mountpath, stats,function(appfs){
-						console.log("opened");
-					});
+					var virtual = new appfs(mountpath, stats,readyCall);
 				break;
 				default:
 					throw "unknown format:"+mountpath;
