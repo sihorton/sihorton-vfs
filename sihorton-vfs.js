@@ -14,6 +14,10 @@ var appfs = function(mountpath, stats, readyCall) {
 		//but performance is lower.
 		
 		// footer info
+		,footerOnDisk:false
+		,footerModified:false
+		,formatName:'a'
+		,formatSize:16
 		,footerSize:(4*3)+16
 		,dirPos:undefined
 		,fileFormatv:0
@@ -46,11 +50,55 @@ var appfs = function(mountpath, stats, readyCall) {
 				readDir.on('end',function() {
 					//we have now read in the directory listing.
 					Me.dirs = JSON.parse(dat);
+					Me.footerOnDisk = true;
+					Me.footerModified = false;
 					//tell caller we are ready.
 					if (footerRead) footerRead(Me);
 			
 				});
 			});
+		}
+		/**
+		*_writeFooter writes footer info to file
+		* no need to call this directly, it is called through other methods.
+		*/
+		,_writeFooter:function(footerWritten) {
+			//just to be safe re-stat to find size.
+			//fs.stat(Me.mountpath,function(err,stats) {
+			//Me.dirPos = stats.size;
+				var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
+				footer1.write(JSON.stringify(Me.dirs));
+				
+				//write buffer record..
+				var Buffer = require('buffer').Buffer;
+				var bundleRecord = new Buffer(Me.footerSize);
+				
+				var offset = 0;
+				var writeInt32 = function (buffer, data) {
+					buffer[offset] = data & 0xff;
+					buffer[offset + 1] = (data & 0xff00) >> 0x08;
+					buffer[offset + 2] = (data & 0xff0000) >> 0x10;
+					buffer[offset + 3] = (data & 0xff000000) >> 0x18;
+					offset += 4;        
+				};
+				var writeString = function(buffer, str,size) {
+					var strBuf = new Buffer(size);
+					strBuf.fill(" ");
+					strBuf.write(str);
+					buffer.write(strBuf.toString(),offset,offset+size);
+					offset += size;
+				}
+						
+				writeString(bundleRecord,Me.formatName,Me.formatSize);
+				writeInt32(bundleRecord,Me.dirPos);
+				writeInt32(bundleRecord,Me.fileFormatv);
+				writeInt32(bundleRecord,Me.flagv);
+				footer1.write(bundleRecord);
+				footer1.end();
+				if (typeof footerWritten != 'undefined') {
+					footerWritten();
+				}
+			//});
 		}
 		/* virtual file system, replicate fs style api */
 		,stat:function(path, statCalling) {
@@ -104,8 +152,10 @@ var appfs = function(mountpath, stats, readyCall) {
 			//options not supported yet..
 			//you can only open them one at a time..
 			//we should start writing from the dirposition..
-			var start = Me.msize;
+			var start = Me.dirPos;//Me.msize;
+			//can append if no footer written, overwrite if it does not yet exist.
 			var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
+			//var write1 = fs.createWriteStream(Me.mountpath,{flags:'r+',start:start});
 			write1.on('close',function(err) {
 				//file has now been appended, add it to the dirs.
 				//we have two modes, one where dirs has not been written to file
