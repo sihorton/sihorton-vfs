@@ -235,8 +235,8 @@ var appfs = function(mountpath, stats, readyCall) {
 						} else {
 							return false;
 						}
-					},isSocket() {return false;}
-					,isFIFO() {return false;}
+					},isSocket:function() {return false;}
+					,isFIFO:function() {return false;}
 					,mode:Me.dirs[fpath].mode
 					,uid:Me.dirs[fpath].uid
 					,gid:Me.dirs[fpath].gid
@@ -296,7 +296,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				if (done) done();
 			}
 		},truncateSync:function(fd, len, done) {
-			return Me.truncateSync:function(fd, len, done);
+			return Me.truncateSync(fd, len, done);
 		},exists:function(fpath,existsDone) {
 			if (Me.dirs[fpath]) {
 				if (existsDone) existsDone(true);
@@ -308,7 +308,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				return true;
 			} 
 			return false;
-		},chown(fpath,uid,gid,chownDone) {
+		},chown:function(fpath,uid,gid,chownDone) {
 			if (Me.dirs[fpath]) {
 				//is it a link?
 				if (Me.dirs[fpath].link) {
@@ -339,12 +339,12 @@ var appfs = function(mountpath, stats, readyCall) {
 		},chownSync:function(fpath,uid,gid,chownDone) {
 			//we can support sync call since we complete immediately
 			return Me.chown(fpath,uid,gid,chownDone);
-		},fchown(fd,uid,gid,chownDone) {
+		},fchown:function(fd,uid,gid,chownDone) {
 			fpath = Me.fds[fd].path;
 			return Me.chown(fpath,uid,gid,chownDone);
-		},fchownSync(fd,uid,gid,chownDone) {
+		},fchownSync:function(fd,uid,gid,chownDone) {
 			Me.fchown(fd,uid,gid,chownDone);		
-		},lchown(fpath,uid,gid,chownDone) {
+		},lchown:function(fpath,uid,gid,chownDone) {
 			if (!Me.dirs[fpath]) {
 				var err = new Error("ENOENT, chown '"+fpath+"'");
 				err.errno = 34;
@@ -356,7 +356,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				Me.dirs[fpath].gid = gid;
 				if (chownDone) chownDone();
 			}
-		},lchownSync(fpath,uid,gid,chownDone) {
+		},lchownSync:function(fpath,uid,gid,chownDone) {
 			Me.lchown(fpath,uid,gid,chownDone);		
 		},chmod:function(fpath,mode,chmodDone) {
 			//@ToDo: translate mode properly.
@@ -392,11 +392,11 @@ var appfs = function(mountpath, stats, readyCall) {
 			Me.chmod(fpath,mod,chmodDone);
 		},fchmodSync:function(fd,mode,chmodDone) {
 			return Me.fchmod(fd,mode,chmodDone);
-		},readlinkSync(fpath,done) {
+		},readlinkSync:function(fpath,done) {
 			if (Me.dirs[fpath] && Me.dirs[fpath].link) {
 				return Me.dirs[fpath].link;
 			}
-		},readlink(fpath,done) {
+		},readlink:function(fpath,done) {
 			if (Me.dirs[fpath] && Me.dirs[fpath].link) {
 				done(null,Me.dirs[fpath].link);
 			}
@@ -422,7 +422,7 @@ var appfs = function(mountpath, stats, readyCall) {
 		},linkSync:function(srcpath,dstpath,done) {
 			//we can support sync call since we complete immediately
 			return Me.chmod(srcpath,dstpath,done);
-		},unlink(fpath, done) {
+		},unlink:function(fpath, done) {
 			if (Me.dirs[fpath]) {
 				delete Me.dirs[fpath];
 				Me.isFragmented = true;
@@ -434,32 +434,32 @@ var appfs = function(mountpath, stats, readyCall) {
 				err.path = fpath;
 				done(err);
 			}
-		},unlinkSync(fpath) {
+		},unlinkSync:function(fpath) {
 			return unlink(fpath);
 		}
 		//,rmdir,rmdirSync,mkdir,mkdirSync
 		//readdir,readdirSync
-		,utimes(fpath,atime,mtime,done) {
+		,utimes:function(fpath,atime,mtime,done) {
 			if (Me.dirs[fpath]) {
 				Me.dirs[fpath].atime = atime;
 				Me.dirs[fpath].mtime = mtime;
 				if (done) done(null);
 			}
-		},utimesSync(fpath,atime,mtime) {
+		},utimesSync:function(fpath,atime,mtime) {
 			utimes(fpath,atime,mtime);
-		},futimes(fd,atime,mtime,done) {
+		},futimes:function(fd,atime,mtime,done) {
 			var fpath = Me.fds[fd];
 			utimes(fpath,atime,mtime,done);
-		},futimesSync(fd,atime,mtime) {
+		},futimesSync:function(fd,atime,mtime) {
 			var fpath = Me.fds[fd];
 			utimes(fpath,atime,mtime);
-		},fsync(fd,done) {
+		},fsync:function(fd,done) {
 			//-- flush to disk
 			if (done) done(null);
-		},fsyncSync(fd) {
+		},fsyncSync:function(fd) {
 		}
 		//poor initial implementation
-		,open(fpath,flags,mode,done) {
+		,open:function(fpath,flags,mode,done) {
 			var fd = Me.fds.length;
 			Me.fds.push({
 				path:fpath
@@ -468,14 +468,14 @@ var appfs = function(mountpath, stats, readyCall) {
 			if (done) {
 				done(null,fd);
 			}
-		},close(fd) {
+		},close:function(fd) {
 			Me.fds[fd].state = 'closed';
 		}/*,write(fd, buffer, offset, length, position, callback) {
 			fpath = Me.fds[fd];
 			var write1 = Me.createWriteStream(fpath,{start:offset,end:offset+length});
 		}
 		fs.writeSync(fd, buffer, offset, length, position)*/
-		,read(fd, buffer, offset, length, position, callback) {
+		,read:function(fd, buffer, offset, length, position, callback) {
 			fpath = Me.fds[fd];
 			var read1 = Me.createReadStream(fpath,{start:offset,end:offset+length});
 			var dat;
@@ -485,7 +485,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				} else {
 					dat += data;
 				}
-			}
+			});
 			read1.on('close',function(data) {
 				if (typeof dat=='undefined') {
 					dat = data;
@@ -499,7 +499,7 @@ var appfs = function(mountpath, stats, readyCall) {
 		}
 		//fs.readSync(fd, buffer, offset, length, position)
 		
-		,readFile(fpath, encoding, done) {
+		,readFile:function(fpath, encoding, done) {
 			var read1 = Me.createReadStream(fpath);
 			var dat;
 			read1.on('data',function(data) {
@@ -516,7 +516,7 @@ var appfs = function(mountpath, stats, readyCall) {
 			});
 		}
 		//,readFileSync(filename, encoding)
-		,writeFile(fpath, data, encoding, done) {
+		,writeFile:function(fpath, data, encoding, done) {
 			var write1 = Me.createWriteStream(fpath);
 			write1.on('close',function() {
 				if (done) done(null);
@@ -525,8 +525,12 @@ var appfs = function(mountpath, stats, readyCall) {
 			write1.end();
 		}
 		//writeFileSync(filename,data,encoding)
+		//,appendFile(fpath,data,encoding,callback) {
+			//this is a bad call in a vfs, since append is not going to be quick, basically we will have to create a new file at the end of the package every time you write!
+		//,watch(fpath,options,listener) {
 		
 	}
+	
 	if (stats.size ==0) {
 		//this is a new file.
 		readyCall(Me);
