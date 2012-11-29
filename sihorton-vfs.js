@@ -47,6 +47,19 @@ var appfs = function(mountpath, stats, readyCall) {
 				});
 			});
 		}
+		/* virtual file system, replicate fs style api */
+		,stat:function(path, statCalling) {
+			if (Me.dirs[path]) {
+				statCalling(null,Me.dirs[path]);
+			} else {
+				//simulate read error
+				var err = new Error("ENOENT, stat '"+path+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = path;
+				statCalling(err);
+			}
+		}
 	}
 	Me._readFooter(readyCall);
 }
