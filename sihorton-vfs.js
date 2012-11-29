@@ -59,6 +59,31 @@ var appfs = function(mountpath, stats, readyCall) {
 				err.path = path;
 				statCalling(err);
 			}
+		},createReadStream:function(path,options) {
+			/**
+			* http://nodejs.org/api/fs.html#fs_fs_createreadstream_path_options
+			* @ToDo support options.
+			*/
+			if (Me.dirs[path]) {
+				var f = Me.dirs[path];
+				if (f.start == f.end) {
+					//cannot read 0 bytes so use a dummy zero length file instead.
+					var zeroLengthFile = function () {
+					  this.readable = true;
+					};
+					require('util').inherits(zeroLengthFile,require('stream'));
+					return new zeroLengthFile();
+				} else {
+					return fs.createReadStream(Me.mountpath,{start:f.start,end:f.end-1});
+				}
+			} else {
+				//@ToDo: create a new file
+				var err = new Error("ENOENT, open '"+path+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = path;
+				throw err;
+			}
 		}
 	}
 	Me._readFooter(readyCall);

@@ -13,4 +13,13 @@ appfs.Mount(__dirname+"\\new-example.appfs",function(vfs) {
 	vfs.stat("package.json",function(err,stats) {
 		console.log("\t",stats != undefined,"stat() - stats object returned");
 	});
+	//nodefs.createReadStream("not_found");
+	//vfs.createReadStream("not_found");
+	var read1 = vfs.createReadStream("package.json");
+	read1.on('data',function(dat) {
+		console.log("\t",true,"createReadStream - data event fired");
+	});
+	read1.on('end',function() {
+		console.log("\t",true,"createReadStream - end event fired");
+	});
 });
