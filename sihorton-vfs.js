@@ -237,9 +237,17 @@ var appfs = function(mountpath, stats, readyCall) {
 				err.path = oldPath;
 				renameDone(err);
 			} else {
-				var old = Me.dirs[oldPath];
-				Me.dirs[newPath] = old;
-				delete Me.dirs[oldPath];
+				if (Me.dirs[newPath]) {
+					var err = new Error("path already exists, rename'"+newPath+"'");
+					//err.errno = 34;
+					//err.code = 'ENOENT';
+					err.path = newPath;
+					renameDone(err);
+				} else {
+					var old = Me.dirs[oldPath];
+					Me.dirs[newPath] = old;
+					delete Me.dirs[oldPath];
+				}
 			}
 		},renameSync:function(oldPath, newPath, renameDone) {
 			//we can support sync call since we complete immediately
