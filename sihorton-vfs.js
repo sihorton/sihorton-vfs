@@ -260,9 +260,17 @@ var appfs = function(mountpath, stats, readyCall) {
 			} else {
 				fpath = Me.fds[fd].path;
 			}
-			//uncontrolled altering of file size allowed here.
-			Me.dirs[fpath].size = len;
-			if (done) done();
+			if (!Me.dirs[fpath]) {
+				var err = new Error("ENOENT, truncate "+fd+" '"+fpath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = fpath;
+				done(err);
+			} else {
+				//uncontrolled altering of file size allowed here.
+				Me.dirs[fpath].size = len;
+				if (done) done();
+			}
 		},truncateSync:function(fd, len, done) {
 			return Me.truncateSync:function(fd, len, done);
 		},exists:function(fpath,existsDone) {
@@ -278,8 +286,24 @@ var appfs = function(mountpath, stats, readyCall) {
 			return false;
 		},chown(fpath,uid,gid,chownDone) {
 			if (Me.dirs[fpath]) {
-				Me.dirs[fpath].uid = uid;
-				Me.dirs[fpath].gid = gid;
+				//is it a link?
+				if (Me.dirs[fpath].link) {
+					var l = Me.dirs[fpath].link;
+					if (!Me.dirs[l]) {
+						var err = new Error("ENOENT, chown lnk destination not found'"+fpath+"'");
+						err.errno = 34;
+						err.code = 'ENOENT';
+						err.path = fpath;
+						err.lnkpath = l;
+						renameDone(err);					
+					} else {
+						Me.dirs[fpath].uid = uid;
+						Me.dirs[fpath].gid = gid;
+					}
+				} else {
+					Me.dirs[fpath].uid = uid;
+					Me.dirs[fpath].gid = gid;
+				}
 				if (chownDone) chownDone();
 			} else {
 				var err = new Error("ENOENT, chown '"+fpath+"'");
@@ -291,10 +315,43 @@ var appfs = function(mountpath, stats, readyCall) {
 		},chownSync:function(fpath,uid,gid,chownDone) {
 			//we can support sync call since we complete immediately
 			return Me.chown(fpath,uid,gid,chownDone);
+		},fchown(fd,uid,gid,chownDone) {
+			fpath = Me.fds[fd].path;
+			return Me.chown(fpath,uid,gid,chownDone);
+		},fchownSync(fd,uid,gid,chownDone) {
+			Me.fchown(fd,uid,gid,chownDone);		
+		},lchown(fpath,uid,gid,chownDone) {
+			if (!Me.dirs[fpath]) {
+				var err = new Error("ENOENT, chown '"+fpath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = fpath;
+				chownDone(err);
+			} else {
+				Me.dirs[fpath].uid = uid;
+				Me.dirs[fpath].gid = gid;
+				if (chownDone) chownDone();
+			}
+		},lchownSync(fpath,uid,gid,chownDone) {
+			Me.lchown(fpath,uid,gid,chownDone);		
 		},chmod:function(fpath,mode,chmodDone) {
 			//@ToDo: translate mode properly.
 			if (Me.dirs[fpath]) {
-				Me.dirs[fpath].mode = mode;
+				if (Me.dirs[fpath].link) {
+					var l = Me.dirs[fpath].link;
+					if (Me.dirs[l]) {
+						Me.dirs[l].mode = mode;
+					} else {
+						var err = new Error("ENOENT, chmod lnk '"+fpath+"'");
+						err.errno = 34;
+						err.code = 'ENOENT';
+						err.path = fpath;
+						err.lnk = l;
+						chownDone(err);
+					}
+				} else {
+					Me.dirs[fpath].mode = mode;
+				}
 				if (chmodDone) chmodDone();
 			} else {
 				var err = new Error("ENOENT, chmod '"+fpath+"'");
@@ -306,10 +363,18 @@ var appfs = function(mountpath, stats, readyCall) {
 		},chmodSync:function(fpath,mode,done) {
 			//we can support sync call since we complete immediately
 			return Me.chmod(fpath,mode,done);
+		},fchmod:function(fd,mode,chmodDone) {
+			fpath = Me.fds[fd];
+			Me.chmod(fpath,mod,chmodDone);
+		},fchmodSync:function(fd,mode,chmodDone) {
+			return Me.fchmod(fd,mode,chmodDone);
 		},link:function(srcpath,dstpath,done) {
 			if (Me.dirs[dstpath]) {
 				Me.dirs[srcpath] = {
 					link:dstpath
+					,uid:Me.dirs[dstpath].uid
+					,gid:Me.dirs[dstpath].gid
+					,mode:Me.dirs[dstpath].mode
 				}
 				if (done) done();
 			} else {
