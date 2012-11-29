@@ -101,24 +101,24 @@ var appfs = function(mountpath, stats, readyCall) {
 			});
 		}
 		/* virtual file system, replicate fs style api */
-		,stat:function(path, statCalling) {
-			if (Me.dirs[path]) {
-				statCalling(null,Me.dirs[path]);
+		,stat:function(fpath, statCalling) {
+			if (Me.dirs[fpath]) {
+				statCalling(null,Me.dirs[fpath]);
 			} else {
 				//simulate read error
-				var err = new Error("ENOENT, stat '"+path+"'");
+				var err = new Error("ENOENT, stat '"+fpath+"'");
 				err.errno = 34;
 				err.code = 'ENOENT';
-				err.path = path;
+				err.path = fpath;
 				statCalling(err);
 			}
-		},createReadStream:function(path,options) {
+		},createReadStream:function(fpath,options) {
 			/**
 			* http://nodejs.org/api/fs.html#fs_fs_createreadstream_path_options
 			* @ToDo support options.
 			*/
-			if (Me.dirs[path]) {
-				var f = Me.dirs[path];
+			if (Me.dirs[fpath]) {
+				var f = Me.dirs[fpath];
 				if (f.start == f.end) {
 					//cannot read 0 bytes so use a dummy zero length file instead.
 					var zeroLengthFile = function () {
@@ -142,10 +142,10 @@ var appfs = function(mountpath, stats, readyCall) {
 				}
 			} else {
 				//@ToDo: create a new file
-				var err = new Error("ENOENT, open '"+path+"'");
+				var err = new Error("ENOENT, open '"+fpath+"'");
 				err.errno = 34;
 				err.code = 'ENOENT';
-				err.path = path;
+				err.path = fpath;
 				throw err;
 			}
 		},createWriteStream:function(fpath, options) {
@@ -244,17 +244,21 @@ var appfs = function(mountpath, stats, readyCall) {
 		},renameSync:function(oldPath, newPath, renameDone) {
 			//we can support sync call since we complete immediately
 			return Me.rename(oldPath,newPath,renameDone);
-		},exists:function(path,existsDone) {
-			if (Me.dirs[path]) {
+		},exists:function(fpath,existsDone) {
+			if (Me.dirs[fpath]) {
 				if (existsDone) existsDone(true);
 			} else {
 				if (existsDone) existsDone(false);
 			}
-		},existsSync:function(path) {
-			if (Me.dirs[path]) {
+		},existsSync:function(fpath) {
+			if (Me.dirs[fpath]) {
 				return true;
 			} 
 			return false;
+		},chown(fpath,uid,gid,chownDone) {
+			if (Me.dirs[fpath]) {
+				
+			}
 		}
 		
 	}
