@@ -16,6 +16,7 @@ var appfs = function(mountpath, stats, readyCall) {
 		// footer info
 		,footerOnDisk:false
 		,footerModified:true
+		,isFragmented:false//disk file modified so needs to be compacted at some point.
 		,formatName:'a'
 		,formatSize:16
 		,footerSize:(4*3)+16
@@ -391,6 +392,17 @@ var appfs = function(mountpath, stats, readyCall) {
 			Me.chmod(fpath,mod,chmodDone);
 		},fchmodSync:function(fd,mode,chmodDone) {
 			return Me.fchmod(fd,mode,chmodDone);
+		},readlinkSync(fpath,done) {
+			if (Me.dirs[fpath] && Me.dirs[fpath].link) {
+				return Me.dirs[fpath].link;
+			}
+		},readlink(fpath,done) {
+			if (Me.dirs[fpath] && Me.dirs[fpath].link) {
+				done(null,Me.dirs[fpath].link);
+			}
+		},symlink:function(srcpath,dstpath,type,done) {
+			//@ToDo: implement properly.
+			Me.link(srcpath,dstpath,done);
 		},link:function(srcpath,dstpath,done) {
 			if (Me.dirs[dstpath]) {
 				Me.dirs[srcpath] = {
@@ -410,7 +422,43 @@ var appfs = function(mountpath, stats, readyCall) {
 		},linkSync:function(srcpath,dstpath,done) {
 			//we can support sync call since we complete immediately
 			return Me.chmod(srcpath,dstpath,done);
+		},unlink(fpath, done) {
+			if (Me.dirs[fpath]) {
+				delete Me.dirs[fpath];
+				Me.isFragmented = true;
+				if (done) done(null);
+			} else {
+				var err = new Error("ENOENT, link '"+fpath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = fpath;
+				done(err);
+			}
+		},unlinkSync(fpath) {
+			return unlink(fpath);
 		}
+		//,rmdir,rmdirSync,mkdir,mkdirSync
+		//readdir,readdirSync
+		/*,close(fd) {
+			//
+		},open(fpath,flags,mode,done) {
+		
+		}*/
+		,utimes(fpath,atime,mtime,done) {
+			if (Me.dirs[fpath]) {
+				Me.dirs[fpath].atime = atime;
+				Me.dirs[fpath].mtime = mtime;
+				if (done) done(null);
+			}
+		},utimesSync(fpath,atime,mtime) {
+			utimes(fpath,atime,mtime);
+		},futimes(fd,atime,mtime,done) {
+			var fpath = Me.fds[fd];
+			utimes(fpath,atime,mtime,done);
+		},futimesSync(fd,atime,mtime) {
+			var fpath = Me.fds[fd];
+			utimes(fpath,atime,mtime);
+		
 	}
 	if (stats.size ==0) {
 		//this is a new file.
