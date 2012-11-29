@@ -8,13 +8,18 @@ var appfs = function(mountpath, stats, readyCall) {
 	var Me = {
 		mountpath:mountpath
 		,msize:stats.size
-		/* footer info    */
+		,mstatus:0
+		,autoClose:true//automatically write the footer after each write
+		//if this is not true then you can get corrupted files
+		//but performance is lower.
+		
+		// footer info
 		,footerSize:(4*3)+16
 		,dirPos:undefined
 		,fileFormatv:0
 		,flagv:0
 		,dirs:undefined
-		/* footer info end*/
+		// footer info end
 		
 		/**
 		*_readFooter reads in the footer information and the directory listing
@@ -74,7 +79,18 @@ var appfs = function(mountpath, stats, readyCall) {
 					require('util').inherits(zeroLengthFile,require('stream'));
 					return new zeroLengthFile();
 				} else {
-					return fs.createReadStream(Me.mountpath,{start:f.start,end:f.end-1});
+					if (typeof options == 'undefined') {
+						options = {start:0,end:0};
+					}
+					if (!options['start'])options.start = 0;
+					if (!options['end'])options.end = 0;
+					
+					options.start += f.start;
+					options.end += f.end-1;
+					if (options.end > f.end) {
+						options.end = f.end-1;
+					}
+					return fs.createReadStream(Me.mountpath,options);
 				}
 			} else {
 				//@ToDo: create a new file
@@ -84,6 +100,34 @@ var appfs = function(mountpath, stats, readyCall) {
 				err.path = path;
 				throw err;
 			}
+		},createWriteStream:function(fpath, options) {
+			//options not supported yet..
+			//you can only open them one at a time..
+			//we should start writing from the dirposition..
+			var start = Me.msize;
+			var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
+			write1.on('close',function(err) {
+				//file has now been appended, add it to the dirs.
+				//we have two modes, one where dirs has not been written to file
+				//and one where it has, so we will basically write over it
+				//question is also if we want to auto add and write the dirs
+				//after each file write...
+				Me.dirs[fpath] = {
+					start:Me.msize//Me.dirpos
+					,name:path.basename(fpath)
+				}
+				fs.stat(Me.mountpath,function(err,stats) {
+					Me.dirs[fpath].size = Me.msize-stats.size;
+					Me.dirs[fpath].end = stats.size;
+					Me.msize = stats.size;
+					
+					Me.dirs[fpath].atime = stats.atime;
+					Me.dirs[fpath].mtime = stats.mtime;
+					Me.dirs[fpath].ctime = stats.ctime;
+					
+				});
+			});
+			return write1;
 		}
 	}
 	Me._readFooter(readyCall);
