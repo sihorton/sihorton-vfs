@@ -149,45 +149,114 @@ var appfs = function(mountpath, stats, readyCall) {
 				throw err;
 			}
 		},createWriteStream:function(fpath, options) {
+			if (Me.dirs[fpath]) {
+				throw "File Exists!";
+			}
 			//options not supported yet..
-			//you can only open them one at a time..
-			//we should start writing from the dirposition..
-			Me.footerOnDisk=false;
-			Me.footerModified=true;
-			//console.log("writing a stream");
-			//console.log("msize=",Me.msize,",dirPos=",Me.dirPos);
-			//var start = Me.msize;
-			//var start = Me.dirPos;//Me.msize;
-			//can append if no footer written, overwrite if it does not yet exist.
-			var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
-			//var write1 = fs.createWriteStream(Me.mountpath,{flags:'r+',start:start});
-			write1.on('close',function(err) {
-				//file has now been appended, add it to the dirs.
-				//we have two modes, one where dirs has not been written to file
-				//and one where it has, so we will basically write over it
-				//question is also if we want to auto add and write the dirs
-				//after each file write...
-				
-				//also we break the ability to simply append new files to the stream,
-				//maybe we need to have a flush function that creates a new file without the dirlisting
-				
-				Me.dirs[fpath] = {
-					start:Me.msize//Me.dirpos
-					,name:path.basename(fpath)
-				}
-				fs.stat(Me.mountpath,function(err,stats) {
-					Me.dirs[fpath].size = Me.msize-stats.size;
-					Me.dirs[fpath].end = stats.size;
-					Me.msize = stats.size;
-					
-					Me.dirs[fpath].atime = stats.atime;
-					Me.dirs[fpath].mtime = stats.mtime;
-					Me.dirs[fpath].ctime = stats.ctime;
-					
+			var fileStartPos = Me.dirPos;//or msize...
+			if (Me.footerOnDisk == true) {
+				//the footer is on disk, but now we want to append to the file.
+				//remove the footer and then allow writing.
+				var later = require("./later-streamer.js").streamLater();
+				Me.footerOnDisk=false;
+				Me.footerModified=true;
+				fs.open(Me.mountpath,'r+',undefined,function(err,fd) {
+					if (err) throw err;
+					fs.truncate(fd,Me.dirPos,function() {
+						console.log("removed footer");
+						//take any stream data and do stuff with it...
+						var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
+						write1.on('close',function(err) {
+						
+							//add file information to the directory.
+							console.log("write stream complete",fpath);
+							var now = new Date().getTime();
+							Me.dirs[fpath] = {
+								size:write1.bytesWritten
+								,start:fileStartPos
+								,end:fileStartPos+write1.bytesWritten
+								,name:path.basename(fpath)
+								,atime:now
+								,mtime:now
+								,ctime:now
+							}
+							console.log(Me.dirs);
+							//update settings
+							Me.msize = fileStartPos+write1.bytesWritten;
+							Me.dirPos = fileStartPos+write1.bytesWritten;
+							//write1 is written and directory index is updated.
+							later.emit('close');
+						});
+						//is later already finished?
+						if (later.isEnded) {
+							console.log("later already complete, copying data and sending");
+							write1.write(later.waitingData);
+							console.log("write1 going to end now");
+							write1.end();
+							
+						} else {
+							//later is not yet complete...
+							console.log("stream later not yet complete");
+							later.streamNow = write1;
+							write1.write(later.waitingData);
+							later.waitingData = undefined;
+						}
+					});
 				});
-			});
-			return write1;
+				//create a dummy stream that is later on tied to the 
+				//stream we get after truncating the file...
+				return later;
+			} else {
+				//footer is not yet on disk, so we can just append.
+				Me.footerModified=true;
+				var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
+				write1.on('close',function(err) {
+					//update the directory.
+					console.log("append stream complete",fpath);
+					var now = new Date().getTime();
+					Me.dirs[fpath] = {
+						size:write1.bytesWritten
+						,start:fileStartPos
+						,end:fileStartPos+write1.bytesWritten
+						,name:path.basename(fpath)
+						,atime:now
+						,mtime:now
+						,ctime:now
+					}
+					//update settings
+					Me.msize = fileStartPos+write1.bytesWritten;
+					Me.dirPos = fileStartPos+write1.bytesWritten;
+				});
+				return write1;
+			}
+		},rename:function(oldPath, newPath, renameDone) {
+			if (!Me.dirs[oldPath]) {
+				var err = new Error("ENOENT, rename '"+oldPath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = oldPath;
+				renameDone(err);
+			} else {
+				var old = Me.dirs[oldPath];
+				Me.dirs[newPath] = old;
+				delete Me.dirs[oldPath];
+			}
+		},renameSync:function(oldPath, newPath, renameDone) {
+			//we can support sync call since we complete immediately
+			return Me.rename(oldPath,newPath,renameDone);
+		},exists:function(path,existsDone) {
+			if (Me.dirs[path]) {
+				if (existsDone) existsDone(true);
+			} else {
+				if (existsDone) existsDone(false);
+			}
+		},existsSync:function(path) {
+			if (Me.dirs[path]) {
+				return true;
+			} 
+			return false;
 		}
+		
 	}
 	if (stats.size ==0) {
 		//this is a new file.

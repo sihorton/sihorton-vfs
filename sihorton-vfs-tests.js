@@ -13,7 +13,7 @@ var endTest = function() {
 		if (fn) fn();
 	}
 }
-appfs.Mount(__dirname+"\\new-example.appfs",function(vfs) {
+/*appfs.Mount(__dirname+"\\new-example.appfs",function(vfs) {
 	console.log("\t",true,"appfs mounted");
 	//console.log(vfs.dirs);
 	startTest();
@@ -49,16 +49,24 @@ appfs.Mount(__dirname+"\\new-example.appfs",function(vfs) {
 		//write1.write("hello world test of write stream");
 		//write1.end();
 	});
-});
+});*/
 appfs.Mount(__dirname+"\\write-example2.appfs",function(vfs) {
-	var write1 = vfs.createWriteStream("test.txt");
-	write1.on('close',function() {
-		console.log("wrote data");
-		//close the fs..
-		vfs._writeFooter(function() {
-			console.log("wrote footer");
+	console.log(vfs.dirs);
+	tfile = "test1.txt";
+	vfs.exists(tfile, function(exists) {
+		console.log(exists,tfile);
+		if (exists) tfile = "test2.txt";
+		console.log(tfile);
+		var write1 = vfs.createWriteStream(tfile);
+		write1.on('close',function() {
+			console.log("wrote data");
+			//close the fs..
+			console.log(vfs.dirs);
+			vfs._writeFooter(function() {
+				console.log("wrote footer");
+			});
 		});
+		write1.write("hello world "+tfile+" test of write stream");
+		write1.end();
 	});
-	write1.write("hello world test of write stream");
-	write1.end();
 });
