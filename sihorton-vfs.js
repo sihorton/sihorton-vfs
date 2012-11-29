@@ -270,6 +270,21 @@ var appfs = function(mountpath, stats, readyCall) {
 		},chownSync:function(fpath,uid,gid,chownDone) {
 			//we can support sync call since we complete immediately
 			return Me.chown(fpath,uid,gid,chownDone);
+		},chmod:function(fpath,mode,chmodDone) {
+			//@ToDo: translate mode properly.
+			if (Me.dirs[fpath]) {
+				Me.dirs[fpath].mode = mode;
+				if (chmodDone) chmodDone();
+			} else {
+				var err = new Error("ENOENT, chmod '"+fpath+"'");
+				err.errno = 34;
+				err.code = 'ENOENT';
+				err.path = fpath;
+				renameDone(err);
+			}
+		},chmodSync:function(fpath,mode,done) {
+			//we can support sync call since we complete immediately
+			return Me.chmod(fpath,mode,done);
 		}
 	}
 	if (stats.size ==0) {
