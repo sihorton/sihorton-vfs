@@ -472,13 +472,33 @@ var appfs = function(mountpath, stats, readyCall) {
 			Me.fds[fd].state = 'closed';
 		}/*,write(fd, buffer, offset, length, position, callback) {
 			fpath = Me.fds[fd];
-			var write1 = Me.createWriteStream(fpath);
+			var write1 = Me.createWriteStream(fpath,{start:offset,end:offset+length});
 		}
-		fs.writeSync(fd, buffer, offset, length, position)
-		fs.read(fd, buffer, offset, length, position, [callback])
-		fs.readSync(fd, buffer, offset, length, position)
+		fs.writeSync(fd, buffer, offset, length, position)*/
+		,read(fd, buffer, offset, length, position, callback) {
+			fpath = Me.fds[fd];
+			var read1 = Me.createReadStream(fpath,{start:offset,end:offset+length});
+			var dat;
+			read1.on('data',function(data) {
+				if (typeof dat=='undefined') {
+					dat = data;
+				} else {
+					dat += data;
+				}
+			}
+			read1.on('close',function(data) {
+				if (typeof dat=='undefined') {
+					dat = data;
+				} else {
+					dat += data;
+				}
+				if (callback) {
+					callback(null,length,dat);
+				}
+			});
+		}
+		//fs.readSync(fd, buffer, offset, length, position)
 		
-		*/
 		,readFile(fpath, encoding, done) {
 			var read1 = Me.createReadStream(fpath);
 			var dat;
