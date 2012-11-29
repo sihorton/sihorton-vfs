@@ -458,12 +458,17 @@ var appfs = function(mountpath, stats, readyCall) {
 			if (done) done(null);
 		},fsyncSync(fd) {
 		}
-		/*,close(fd) {
-			//
-		},open(fpath,flags,mode,done) {
-		
+		//poor initial implementation
+		,open(fpath,flags,mode,done) {
+			var fd = Me.fds.length;
+			Me.fds.push(fpath);
+			if (done) {
+				done(null,fd);
+			}
+		},close(fd) {
+			//@ToDo mark this as closed and remove it somehow.
 		}
-		fs.write(fd, buffer, offset, length, position, [callback])#
+		//write(fd, buffer, offset, length, position, [callback])#
 		fs.writeSync(fd, buffer, offset, length, position)
 		fs.read(fd, buffer, offset, length, position, [callback])
 		fs.readSync(fd, buffer, offset, length, position)
