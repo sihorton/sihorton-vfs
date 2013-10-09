@@ -2,7 +2,7 @@
   "name": "sihorton-vfs",
   "version": "0.3.0",
   "description": "streaming vfs for general application files",
-  "main": "index.js",
+  "main": "sihorton-vfs.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/sihorton/sihorton-vfs.git"
