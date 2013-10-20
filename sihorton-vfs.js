@@ -170,7 +170,7 @@ var appfs = function(mountpath, stats, readyCall) {
 							//add file information to the directory.
 							console.log("write stream complete",fpath);
 							var now = new Date().getTime();
-							Me.dirs[fpath] = {
+							Me.dirs[fpath.split("\\").join("/")] = {
 								size:write1.bytesWritten
 								,start:fileStartPos
 								,end:fileStartPos+write1.bytesWritten
@@ -213,7 +213,7 @@ var appfs = function(mountpath, stats, readyCall) {
 					//update the directory.
 					console.log("append stream complete",fpath);
 					var now = new Date().getTime();
-					Me.dirs[fpath] = {
+					Me.dirs[fpath.split("\\").join("/")] = {
 						size:write1.bytesWritten
 						,start:fileStartPos
 						,end:fileStartPos+write1.bytesWritten
