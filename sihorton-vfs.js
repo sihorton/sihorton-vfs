@@ -595,6 +595,7 @@ module.exports.Mount = function(mountpath, readyCall) {
 				//find format from extension?
 				switch(path.extname(mountpath)) {
 					case '.appfs':
+					case '.exe':
 						//an application resource package.
 						var virtual = new appfs(mountpath, stats,readyCall);
 					break;
