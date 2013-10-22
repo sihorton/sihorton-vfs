@@ -105,8 +105,6 @@ var appfs = function(mountpath, stats, readyCall) {
 		,moveOffset:function(offsetSize,footerWritten) {
 			//used to modify the start of each file so you can prepend to the package
 			//this is used to prepend a windows executable for example.
-			console.log("moveOffset",offsetSize);
-			console.log(Me.dirs);
 			for(var f in Me.dirs) {
 				console.log(Me.dirs[f].start,f);
 				Me.dirs[f].start += offsetSize;
@@ -231,7 +229,6 @@ var appfs = function(mountpath, stats, readyCall) {
 								,mtime:now
 								,ctime:now
 							}
-							console.log(Me.dirs);
 							//update settings
 							Me.msize = fileStartPos+write1.bytesWritten;
 							Me.dirPos = fileStartPos+write1.bytesWritten;
