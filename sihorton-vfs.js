@@ -60,48 +60,6 @@ var appfs = function(mountpath, stats, readyCall) {
 				});
 			});
 		}
-		,_reWriteFooter:function(footerWritten) {
-			//Me.dirPos = stats.size;
-			fs.open(Me.mountpath,'r+',undefined,function(err,fd) {
-				if (err) throw err;
-				fs.truncate(fd,Me.dirPos,function() {
-					console.log("removed footer");
-					
-					var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
-					footer1.write(JSON.stringify(Me.dirs));
-					
-					//write buffer record..
-					var Buffer = require('buffer').Buffer;
-					var bundleRecord = new Buffer(Me.footerSize);
-					
-					var offset = 0;
-					var writeInt32 = function (buffer, data) {
-						buffer[offset] = data & 0xff;
-						buffer[offset + 1] = (data & 0xff00) >> 0x08;
-						buffer[offset + 2] = (data & 0xff0000) >> 0x10;
-						buffer[offset + 3] = (data & 0xff000000) >> 0x18;
-						offset += 4;        
-					};
-					var writeString = function(buffer, str,size) {
-						var strBuf = new Buffer(size);
-						strBuf.fill(" ");
-						strBuf.write(str);
-						buffer.write(strBuf.toString(),offset,offset+size);
-						offset += size;
-					}
-							
-					writeString(bundleRecord,Me.formatName,Me.formatSize);
-					writeInt32(bundleRecord,Me.dirPos);
-					writeInt32(bundleRecord,Me.fileFormatv);
-					writeInt32(bundleRecord,Me.flagv);
-					footer1.write(bundleRecord);
-					footer1.end();
-					if (typeof footerWritten != 'undefined') {
-						footerWritten();
-					}
-				});
-			});
-		}
 		/**
 		*_writeFooter writes footer info to file
 		* no need to call this directly, it is called through other methods.
@@ -152,8 +110,49 @@ var appfs = function(mountpath, stats, readyCall) {
 			for(var f in Me.dirs) {
 				console.log(Me.dirs[f].start,f);
 				Me.dirs[f].start += offsetSize;
+				Me.dirs[f].end += offsetSize;
+				
 			}
-			footerModified = true;
+			//need to write out a modified footer...
+			fs.open(Me.mountpath,'r+',undefined,function(err,fd) {
+				if (err) throw err;
+				fs.truncate(fd,Me.dirPos,function() {
+					console.log("removed footer");
+					
+					var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
+					footer1.write(JSON.stringify(Me.dirs));
+					
+					//write buffer record..
+					var Buffer = require('buffer').Buffer;
+					var bundleRecord = new Buffer(Me.footerSize);
+					
+					var offset = 0;
+					var writeInt32 = function (buffer, data) {
+						buffer[offset] = data & 0xff;
+						buffer[offset + 1] = (data & 0xff00) >> 0x08;
+						buffer[offset + 2] = (data & 0xff0000) >> 0x10;
+						buffer[offset + 3] = (data & 0xff000000) >> 0x18;
+						offset += 4;        
+					};
+					var writeString = function(buffer, str,size) {
+						var strBuf = new Buffer(size);
+						strBuf.fill(" ");
+						strBuf.write(str);
+						buffer.write(strBuf.toString(),offset,offset+size);
+						offset += size;
+					}
+							
+					writeString(bundleRecord,Me.formatName,Me.formatSize);
+					writeInt32(bundleRecord,Me.dirPos+offsetSize);
+					writeInt32(bundleRecord,Me.fileFormatv);
+					writeInt32(bundleRecord,Me.flagv);
+					footer1.write(bundleRecord);
+					footer1.end();
+					if (typeof footerWritten != 'undefined') {
+						footerWritten();
+					}
+				});
+			});	
 		}
 		/* virtual file system, replicate fs style api */
 		,createReadStream:function(fpath,options) {
