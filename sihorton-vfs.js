@@ -190,7 +190,15 @@ var appfs = function(mountpath, stats, readyCall) {
 				err.errno = 34;
 				err.code = 'ENOENT';
 				err.path = fpath;
-				throw err;
+				//throw err;
+				var Stream = require('stream')
+				var errStream = new Stream()
+				errStream.readable = true;
+				process.nextTick(function() {
+					errStream.emit("error",err);
+					errStream.emit("end");
+				});
+				return errStream;
 			}
 		},createWriteStream:function(fpath, options) {
 			if (Me.dirs[fpath]) {
@@ -215,7 +223,7 @@ var appfs = function(mountpath, stats, readyCall) {
 							//add file information to the directory.
 							console.log("write stream complete",fpath);
 							var now = new Date().getTime();
-							Me.dirs[fpath] = {
+							Me.dirs[fpath.split("\\").join("/")] = {
 								size:write1.bytesWritten
 								,start:fileStartPos
 								,end:fileStartPos+write1.bytesWritten
@@ -258,7 +266,7 @@ var appfs = function(mountpath, stats, readyCall) {
 					//update the directory.
 					console.log("append stream complete",fpath);
 					var now = new Date().getTime();
-					Me.dirs[fpath] = {
+					Me.dirs[fpath.split("\\").join("/")] = {
 						size:write1.bytesWritten
 						,start:fileStartPos
 						,end:fileStartPos+write1.bytesWritten
@@ -562,9 +570,14 @@ var appfs = function(mountpath, stats, readyCall) {
 					dat += data;
 				}
 			});
+			var lasterror = null;
+			read1.on('error',function(err) {
+				lasterror = err;
+				console.log("sending error",err);
+			});
 			read1.on('end',function() {
 				if (done) {
-					done(null, dat);
+					done(lasterror, dat);
 				}
 			});
 		}
@@ -635,6 +648,7 @@ module.exports.Mount = function(mountpath, readyCall) {
 				//find format from extension?
 				switch(path.extname(mountpath)) {
 					case '.appfs':
+					case '.exe':
 						//an application resource package.
 						var virtual = new appfs(mountpath, stats,readyCall);
 					break;
