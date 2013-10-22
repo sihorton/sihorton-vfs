@@ -520,11 +520,10 @@ var appfs = function(mountpath, stats, readyCall) {
 			var lasterror = null;
 			read1.on('error',function(err) {
 				lasterror = err;
-				console.log("sending error");
+				console.log("sending error",err);
 			});
 			read1.on('end',function() {
 				if (done) {
-					console.log("sending error",lasterror);
 					done(lasterror, dat);
 				}
 			});
