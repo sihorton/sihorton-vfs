@@ -102,7 +102,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				}
 			});
 		}
-		,moveOffset:function(offsetSize) {
+		,moveOffset:function(offsetSize,footerWritten) {
 			//used to modify the start of each file so you can prepend to the package
 			//this is used to prepend a windows executable for example.
 			console.log("moveOffset",offsetSize);
