@@ -1,6 +1,8 @@
 var fs = require('fs')
 	path = require('path');
 var cryptoStreamer = require("./crypto-streamer.js");
+var b64Streamer = require('./base64-streamer.js');
+
 /**
 * A virtual file system served from a file on disk.
 */
@@ -186,7 +188,11 @@ var appfs = function(mountpath, stats, readyCall) {
 					if (Me.pipe == 'none            ') {
 						return fs.createReadStream(Me.mountpath,options);
 					} else {
-						return cryptoStreamer.decryptStream(fs.createReadStream(Me.mountpath,options),Me.pipe);
+						var b64decode = b64Streamer.Decoder();
+						var reader = fs.createReadStream(Me.mountpath,options);
+						var crypto = cryptoStreamer.decryptStream(reader,Me.pipe);
+						crypto.pipe(b64decode);
+						return b64decode;
 					}
 				}
 			} else {
