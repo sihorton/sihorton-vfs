@@ -59,7 +59,6 @@ var appfs = function(mountpath, stats, readyCall) {
 					if (Me.pipe == 'none            ') {
 						Me.dirs = JSON.parse(dat);
 					} else {
-						
 						var buf = new Buffer(dat, 'base64');
 						Me.dirs = JSON.parse(buf.toString());
 					}
@@ -146,37 +145,54 @@ var appfs = function(mountpath, stats, readyCall) {
 					console.log("removed footer");
 					
 					var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
-					footer1.write(JSON.stringify(Me.dirs));
-					
-					//write buffer record..
-					var Buffer = require('buffer').Buffer;
-					var bundleRecord = new Buffer(Me.footerSize);
-					
-					var offset = 0;
-					var writeInt32 = function (buffer, data) {
-						buffer[offset] = data & 0xff;
-						buffer[offset + 1] = (data & 0xff00) >> 0x08;
-						buffer[offset + 2] = (data & 0xff0000) >> 0x10;
-						buffer[offset + 3] = (data & 0xff000000) >> 0x18;
-						offset += 4;        
-					};
-					var writeString = function(buffer, str,size) {
-						var strBuf = new Buffer(size);
-						strBuf.fill(" ");
-						strBuf.write(str);
-						buffer.write(strBuf.toString(),offset,offset+size);
-						offset += size;
+					if (Me.pipe == 'none            ') {
+						footer1.write(JSON.stringify(Me.dirs));
+						doWriteRest();
+					} else {
+						var b64encode = b64Streamer.Encoder();
+						//var enc = cryptoStreamer.encryptStream(b64encode,Me.pipe);
+						b64encode.on('data',function(dat) {
+							console.log("data");
+							footer1.write(dat);
+						});
+						b64encode.on('end',function() {
+							doWriteRest();
+						});
+						b64encode.write(JSON.stringify(Me.dirs));
+						b64encode.end();
 					}
-							
-					writeString(bundleRecord,Me.formatName,Me.formatSize);
-					writeInt32(bundleRecord,Me.dirPos+offsetSize);
-					writeInt32(bundleRecord,Me.fileFormatv);
-					writeInt32(bundleRecord,Me.flagv);
-					writeString(bundleRecord,Me.pipe,16);
-					footer1.write(bundleRecord);
-					footer1.end();
-					if (typeof footerWritten != 'undefined') {
-						footerWritten();
+					function doWriteRest() {
+						
+						//write buffer record..
+						var Buffer = require('buffer').Buffer;
+						var bundleRecord = new Buffer(Me.footerSize);
+						
+						var offset = 0;
+						var writeInt32 = function (buffer, data) {
+							buffer[offset] = data & 0xff;
+							buffer[offset + 1] = (data & 0xff00) >> 0x08;
+							buffer[offset + 2] = (data & 0xff0000) >> 0x10;
+							buffer[offset + 3] = (data & 0xff000000) >> 0x18;
+							offset += 4;        
+						};
+						var writeString = function(buffer, str,size) {
+							var strBuf = new Buffer(size);
+							strBuf.fill(" ");
+							strBuf.write(str);
+							buffer.write(strBuf.toString(),offset,offset+size);
+							offset += size;
+						}
+								
+						writeString(bundleRecord,Me.formatName,Me.formatSize);
+						writeInt32(bundleRecord,Me.dirPos+offsetSize);
+						writeInt32(bundleRecord,Me.fileFormatv);
+						writeInt32(bundleRecord,Me.flagv);
+						writeString(bundleRecord,Me.pipe,16);
+						footer1.write(bundleRecord);
+						footer1.end();
+						if (typeof footerWritten != 'undefined') {
+							footerWritten();
+						}
 					}
 				});
 			});	
