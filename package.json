@@ -1,6 +1,6 @@
 {
   "name": "sihorton-vfs",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "streaming vfs for general application files",
   "main": "sihorton-vfs.js",
   "repository": {
