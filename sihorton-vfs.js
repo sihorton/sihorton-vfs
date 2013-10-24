@@ -183,7 +183,15 @@ var appfs = function(mountpath, stats, readyCall) {
 					if (options.end > f.end) {
 						options.end = f.end-1;
 					}
-					return fs.createReadStream(Me.mountpath,options);
+					if (Me.pipe == 'none') {
+						return fs.createReadStream(Me.mountpath,options);
+					} else {
+						var reader = fs.createReadStream(Me.mountpath,options);
+						var decStream = cryptoStreamer.decryptStream(reader,Me.pipe);
+						console.log("decrypting",Me.pipe);
+						return decStream;
+
+					}
 				}
 			} else {
 				//@ToDo: create a new file
