@@ -25,7 +25,7 @@ var appfs = function(mountpath, stats, readyCall) {
 		,flagv:0
 		,dirs:{}
 		,fds:[]
-		,pipe:'none'
+		,pipe:'none            '
 		// footer info end
 		
 		/**
@@ -183,14 +183,10 @@ var appfs = function(mountpath, stats, readyCall) {
 					if (options.end > f.end) {
 						options.end = f.end-1;
 					}
-					if (Me.pipe == 'none') {
+					if (Me.pipe == 'none            ') {
 						return fs.createReadStream(Me.mountpath,options);
 					} else {
-						var reader = fs.createReadStream(Me.mountpath,options);
-						var decStream = cryptoStreamer.decryptStream(reader,Me.pipe);
-						console.log("decrypting",Me.pipe);
-						return decStream;
-
+						return cryptoStreamer.decryptStream(fs.createReadStream(Me.mountpath,options),Me.pipe);
 					}
 				}
 			} else {
