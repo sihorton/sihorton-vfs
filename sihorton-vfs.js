@@ -1,6 +1,6 @@
 var fs = require('fs')
 	path = require('path');
-
+var cryptoStreamer = require("./crypto-streamer.js");
 /**
 * A virtual file system served from a file on disk.
 */
@@ -19,12 +19,13 @@ var appfs = function(mountpath, stats, readyCall) {
 		,isFragmented:false//disk file modified so needs to be compacted at some point.
 		,formatName:'a'
 		,formatSize:16
-		,footerSize:(4*3)+16
+		,footerSize:(4*3)+16+16
 		,dirPos:0
 		,fileFormatv:0
 		,flagv:0
 		,dirs:{}
 		,fds:[]
+		,pipe:'none'
 		// footer info end
 		
 		/**
@@ -40,6 +41,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				Me.dirPos = buff.readUInt32LE(offset);offset+=4;
 				Me.fileFormatv = buff.readUInt32LE(0);offset+=4;
 				Me.flagv = buff.readUInt32LE(0);offset+=4;
+				Me.pipe = buff.slice(offset,offset+16).toString();offset+=16;
 			});
 			readStream.on('end',function() {
 				//we read in the whole buffer.
@@ -95,6 +97,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				writeInt32(bundleRecord,Me.dirPos);
 				writeInt32(bundleRecord,Me.fileFormatv);
 				writeInt32(bundleRecord,Me.flagv);
+				writeString(bundleRecord,Me.pipe,16);
 				footer1.write(bundleRecord);
 				footer1.end();
 				if (typeof footerWritten != 'undefined') {
@@ -144,6 +147,7 @@ var appfs = function(mountpath, stats, readyCall) {
 					writeInt32(bundleRecord,Me.dirPos+offsetSize);
 					writeInt32(bundleRecord,Me.fileFormatv);
 					writeInt32(bundleRecord,Me.flagv);
+					writeString(bundleRecord,Me.pipe,16);
 					footer1.write(bundleRecord);
 					footer1.end();
 					if (typeof footerWritten != 'undefined') {
@@ -260,7 +264,6 @@ var appfs = function(mountpath, stats, readyCall) {
 				var write1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
 				write1.on('close',function(err) {
 					//update the directory.
-					console.log("append stream complete",fpath);
 					var now = new Date().getTime();
 					Me.dirs[fpath.split("\\").join("/")] = {
 						size:write1.bytesWritten
