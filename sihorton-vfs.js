@@ -150,7 +150,7 @@ var appfs = function(mountpath, stats, readyCall) {
 				if (err) throw err;
 				fs.truncate(fd,Me.dirPos,function() {
 					console.log("removed footer");
-					
+					fs.close(fd);
 					var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
 					switch (Me.pipe) {
 						case 'none            ':
@@ -200,7 +200,6 @@ var appfs = function(mountpath, stats, readyCall) {
 						writeString(bundleRecord,Me.pipe,16);
 						footer1.write(bundleRecord);
 						footer1.end();
-						fs.close(fd);
 						if (typeof footerWritten != 'undefined') {
 							footerWritten();
 						}
