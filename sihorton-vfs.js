@@ -190,6 +190,7 @@ var appfs = function(mountpath, stats, readyCall) {
 						writeString(bundleRecord,Me.pipe,16);
 						footer1.write(bundleRecord);
 						footer1.end();
+						fs.close(fd);
 						if (typeof footerWritten != 'undefined') {
 							footerWritten();
 						}
@@ -666,6 +667,9 @@ var dirfs = function(mountpoint) {
 * if directory provide an fs wrapper, if file open
 * and provide appfs object.
 */
+module.exports.UnMount = function(mountpath) {
+	
+}
 module.exports.Mount = function(mountpath, readyCall) {
 	fs.stat(mountpath,function(err,stats) {
 		if (err && err.code == 'ENOENT') {
