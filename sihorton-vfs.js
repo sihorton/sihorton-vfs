@@ -27,7 +27,8 @@ var appfs = function(mountpath, stats, readyCall) {
 		,flagv:0
 		,dirs:{}
 		,fds:[]
-		,pipe:'none            '
+		//,pipe:'none            '
+		,pipe:'standard        '
 		// footer info end
 		
 		/**
@@ -56,11 +57,14 @@ var appfs = function(mountpath, stats, readyCall) {
 				readDir.on('end',function() {
 					//we have now read in the directory listing.
 					console.log("Reading Footer, PIPE=",Me.pipe);
-					if (Me.pipe == 'none            ') {
-						Me.dirs = JSON.parse(dat);
-					} else {
-						var buf = new Buffer(dat, 'base64');
-						Me.dirs = JSON.parse(buf.toString());
+					switch(Me.pipe) {
+						case 'none            ':
+							Me.dirs = JSON.parse(dat);
+						break;
+						default:
+							var buf = new Buffer(dat, 'base64');
+							Me.dirs = JSON.parse(buf.toString());
+						break;
 					}
 					Me.footerOnDisk = true;
 					Me.footerModified = false;
@@ -79,21 +83,24 @@ var appfs = function(mountpath, stats, readyCall) {
 			fs.stat(Me.mountpath,function(err,stats) {
 			Me.dirPos = stats.size;
 				var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
-				if (Me.pipe == 'none            ') {
-					footer1.write(JSON.stringify(Me.dirs));
-					doWriteRest();
-				} else {
-					var b64encode = b64Streamer.Encoder();
-					//var enc = cryptoStreamer.encryptStream(b64encode,Me.pipe);
-					b64encode.on('data',function(dat) {
-						console.log("data");
-						footer1.write(dat);
-					});
-					b64encode.on('end',function() {
+				switch (Me.pipe) {
+					case 'none            ':
+						footer1.write(JSON.stringify(Me.dirs));
 						doWriteRest();
-					});
-					b64encode.write(JSON.stringify(Me.dirs));
-					b64encode.end();
+					break;
+					default:
+						var b64encode = b64Streamer.Encoder();
+						//var enc = cryptoStreamer.encryptStream(b64encode,Me.pipe);
+						b64encode.on('data',function(dat) {
+							console.log("data");
+							footer1.write(dat);
+						});
+						b64encode.on('end',function() {
+							doWriteRest();
+						});
+						b64encode.write(JSON.stringify(Me.dirs));
+						b64encode.end();
+					break;
 				}
 				function doWriteRest() {
 					//write buffer record..
@@ -145,21 +152,24 @@ var appfs = function(mountpath, stats, readyCall) {
 					console.log("removed footer");
 					
 					var footer1 = fs.createWriteStream(Me.mountpath,{flags:'a'});
-					if (Me.pipe == 'none            ') {
-						footer1.write(JSON.stringify(Me.dirs));
-						doWriteRest();
-					} else {
-						var b64encode = b64Streamer.Encoder();
-						//var enc = cryptoStreamer.encryptStream(b64encode,Me.pipe);
-						b64encode.on('data',function(dat) {
-							console.log("data");
-							footer1.write(dat);
-						});
-						b64encode.on('end',function() {
+					switch (Me.pipe) {
+						case 'none            ':
+							footer1.write(JSON.stringify(Me.dirs));
 							doWriteRest();
-						});
-						b64encode.write(JSON.stringify(Me.dirs));
-						b64encode.end();
+						break;
+						default:
+							var b64encode = b64Streamer.Encoder();
+							//var enc = cryptoStreamer.encryptStream(b64encode,Me.pipe);
+							b64encode.on('data',function(dat) {
+								console.log("data");
+								footer1.write(dat);
+							});
+							b64encode.on('end',function() {
+								doWriteRest();
+							});
+							b64encode.write(JSON.stringify(Me.dirs));
+							b64encode.end();
+						break;
 					}
 					function doWriteRest() {
 						
@@ -224,14 +234,22 @@ var appfs = function(mountpath, stats, readyCall) {
 					if (options.end > f.end) {
 						options.end = f.end-1;
 					}
-					if (Me.pipe == 'none            ') {
-						return fs.createReadStream(Me.mountpath,options);
-					} else {
-						var b64decode = b64Streamer.Decoder();
-						var reader = fs.createReadStream(Me.mountpath,options);
-						var crypto = cryptoStreamer.decryptStream(reader,Me.pipe);
-						crypto.pipe(b64decode);
-						return b64decode;
+					switch (Me.pipe) {
+						case 'none            ':
+							return fs.createReadStream(Me.mountpath,options);
+						break;
+						case 'standard        ':
+							var b64decode = b64Streamer.Decoder();
+							var reader = fs.createReadStream(Me.mountpath,options);
+							reader.pipe(b64decode);
+							return b64decode;
+						default:
+							var b64decode = b64Streamer.Decoder();
+							var reader = fs.createReadStream(Me.mountpath,options);
+							var crypto = cryptoStreamer.decryptStream(reader,Me.pipe);
+							crypto.pipe(b64decode);
+							return b64decode;
+						break;
 					}
 				}
 			} else {
